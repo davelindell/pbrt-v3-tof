@@ -53,6 +53,8 @@ class ProjectionLight : public Light {
     ProjectionLight(const Transform &LightToWorld,
                     const MediumInterface &medium, const Spectrum &I,
                     const std::string &texname, Float fov);
+    ProjectionLight(ProjectionLight &light) : Light(light) {}
+
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
                        Float *pdf, VisibilityTester *vis) const;
     Spectrum Projection(const Vector3f &w) const;
@@ -63,6 +65,12 @@ class ProjectionLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir) {
+        return;
+    }
+
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<ProjectionLight> doClone();
 
   private:
     // ProjectionLight Private Data

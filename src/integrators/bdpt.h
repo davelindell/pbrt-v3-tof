@@ -44,6 +44,7 @@
 #include "integrator.h"
 #include "interaction.h"
 #include "light.h"
+#include "lights/spot.h"
 #include "pbrt.h"
 #include "reflection.h"
 #include "sampling.h"
@@ -424,22 +425,27 @@ struct Vertex {
     }
 };
 
-extern int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
-                                 MemoryArena &arena, int maxDepth,
-                                 const Camera &camera, const Point2f &pFilm,
-                                 Vertex *path);
+extern int GenerateCameraSubpath(
+    const Scene &scene, Sampler &sampler,
+    MemoryArena &arena, int maxDepth,
+    const Camera &camera, const Point2f &pFilm,
+    Vertex *path,
+    std::vector<std::shared_ptr<Light>> *lights = nullptr);
 
 extern int GenerateLightSubpath(
     const Scene &scene, Sampler &sampler, MemoryArena &arena, int maxDepth,
     Float time, const Distribution1D &lightDistr,
     const std::unordered_map<const Light *, size_t> &lightToIndex,
-    Vertex *path);
+    Vertex *path,
+    std::vector<std::shared_ptr<pbrt::Light>> *lights = nullptr);
+
 Spectrum ConnectBDPT(
     const Scene &scene, Vertex *lightVertices, Vertex *cameraVertices, int s,
     int t, const Distribution1D &lightDistr,
     const std::unordered_map<const Light *, size_t> &lightToIndex,
     const Camera &camera, Sampler &sampler, Point2f *pRaster,
-    Float *misWeight = nullptr);
+    Float *misWeight = nullptr,
+    std::vector<std::shared_ptr<pbrt::Light>> *lights = nullptr);
 BDPTIntegrator *CreateBDPTIntegrator(const ParamSet &params,
                                      std::shared_ptr<Sampler> sampler,
                                      std::shared_ptr<const Camera> camera);

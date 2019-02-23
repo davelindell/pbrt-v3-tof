@@ -52,6 +52,7 @@ class DistantLight : public Light {
     // DistantLight Public Methods
     DistantLight(const Transform &LightToWorld, const Spectrum &L,
                  const Vector3f &w);
+    DistantLight(DistantLight &light) : Light(light) {}
     void Preprocess(const Scene &scene) {
         scene.WorldBound().BoundingSphere(&worldCenter, &worldRadius);
     }
@@ -64,6 +65,12 @@ class DistantLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir) {
+        return;
+    }
+
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<DistantLight> doClone();
 
   private:
     // DistantLight Private Data

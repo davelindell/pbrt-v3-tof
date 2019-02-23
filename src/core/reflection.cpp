@@ -402,6 +402,40 @@ Float LambertianTransmission::Pdf(const Vector3f &wo,
     return !SameHemisphere(wo, wi) ? AbsCosTheta(wi) * InvPi : 0;
 }
 
+Spectrum HenyeyGreensteinReflection::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,
+                        Float *pdf, BxDFType *sampledType) const {
+
+    Float cosTheta;
+    if (std::abs(g) < 1e-3)
+        cosTheta = 1 - 2 * u[0];
+    else {
+        Float sqrTerm = (1 - g * g) / (1 - g + 2 * g * u[0]);
+        cosTheta = (1 + g * g - sqrTerm * sqrTerm) / (2 * g);
+    }
+
+    Float sinTheta = std::sqrt(std::max((Float)0, 1 - cosTheta * cosTheta));
+    Float phi = 2 * Pi * u[1];
+    Vector3f v1, v2;
+    CoordinateSystem(wo, &v1, &v2);
+    *wi = SphericalDirection(sinTheta, cosTheta, phi, v1, v2, -wo);
+    *pdf = Pdf(wo, *wi);
+    return f(wo, *wi);
+}
+
+Float HenyeyGreensteinReflection::Pdf(const Vector3f &wo, const Vector3f &wi) const {
+    Float f = ReflectanceHG(Dot(wo, wi), g); 
+    return f;
+}
+
+Spectrum HenyeyGreensteinReflection::f(const Vector3f &wo, const Vector3f &wi) const {
+    Float f = ReflectanceHG(Dot(wo, wi), g); 
+    return R * f;
+}
+
+std::string HenyeyGreensteinReflection::ToString() const {
+    return StringPrintf("[ HenyeyGreensteinReflection g: %f]", g);
+}
+
 Spectrum MicrofacetReflection::Sample_f(const Vector3f &wo, Vector3f *wi,
                                         const Point2f &u, Float *pdf,
                                         BxDFType *sampledType) const {

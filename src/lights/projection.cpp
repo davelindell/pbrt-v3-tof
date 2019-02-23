@@ -130,6 +130,13 @@ void ProjectionLight::Pdf_Le(const Ray &ray, const Normal3f &, Float *pdfPos,
                   : 0;
 }
 
+std::shared_ptr<Light> ProjectionLight::Clone() {
+    return doClone();
+}
+std::shared_ptr<ProjectionLight> ProjectionLight::doClone() {
+    return std::make_shared<ProjectionLight>(*this);
+}
+
 std::shared_ptr<ProjectionLight> CreateProjectionLight(
     const Transform &light2world, const Medium *medium,
     const ParamSet &paramSet) {

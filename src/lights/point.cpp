@@ -77,6 +77,14 @@ void PointLight::Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
     *pdfDir = UniformSpherePdf();
 }
 
+std::shared_ptr<Light> PointLight::Clone() {
+    return doClone();
+}
+
+std::shared_ptr<PointLight> PointLight::doClone() {
+    return std::make_shared<PointLight>(*this);
+}
+
 std::shared_ptr<PointLight> CreatePointLight(const Transform &light2world,
                                              const Medium *medium,
                                              const ParamSet &paramSet) {

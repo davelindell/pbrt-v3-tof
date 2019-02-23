@@ -41,14 +41,31 @@
 namespace pbrt {
 
 // SpotLight Method Definitions
-SpotLight::SpotLight(const Transform &LightToWorld,
+SpotLight::SpotLight(const Transform &l2w,
+                     const Point3f &from, 
+                     const Transform &LightToWorld,
                      const MediumInterface &mediumInterface, const Spectrum &I,
                      Float totalWidth, Float falloffStart)
     : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface),
+      l2w(l2w),
+      LToW(LightToWorld),
+      WToL(Inverse(LightToWorld)),
+      from(from),
       pLight(LightToWorld(Point3f(0, 0, 0))),
       I(I),
       cosTotalWidth(std::cos(Radians(totalWidth))),
       cosFalloffStart(std::cos(Radians(falloffStart))) {}
+
+SpotLight::SpotLight(SpotLight &light)
+    : Light(light),
+      l2w(light.l2w),
+      LToW(light.LightToWorld),
+      WToL(Inverse(light.LightToWorld)),
+      from(light.from),
+      pLight(light.LightToWorld(Point3f(0, 0, 0))),
+      I(light.I),
+      cosTotalWidth(light.cosTotalWidth),
+      cosFalloffStart(light.cosFalloffStart) {}
 
 Spectrum SpotLight::Sample_Li(const Interaction &ref, const Point2f &u,
                               Vector3f *wi, Float *pdf,
@@ -62,7 +79,7 @@ Spectrum SpotLight::Sample_Li(const Interaction &ref, const Point2f &u,
 }
 
 Float SpotLight::Falloff(const Vector3f &w) const {
-    Vector3f wl = Normalize(WorldToLight(w));
+    Vector3f wl = Normalize(WToL(w));
     Float cosTheta = wl.z;
     if (cosTheta < cosTotalWidth) return 0;
     if (cosTheta >= cosFalloffStart) return 1;
@@ -85,7 +102,7 @@ Spectrum SpotLight::Sample_Le(const Point2f &u1, const Point2f &u2, Float time,
                               Float *pdfDir) const {
     ProfilePhase _(Prof::LightSample);
     Vector3f w = UniformSampleCone(u1, cosTotalWidth);
-    *ray = Ray(pLight, LightToWorld(w), Infinity, time, mediumInterface.inside);
+    *ray = Ray(pLight, LToW(w), Infinity, time, mediumInterface.inside);
     *nLight = (Normal3f)ray->d;
     *pdfPos = 1;
     *pdfDir = UniformConePdf(cosTotalWidth);
@@ -96,9 +113,29 @@ void SpotLight::Pdf_Le(const Ray &ray, const Normal3f &, Float *pdfPos,
                        Float *pdfDir) const {
     ProfilePhase _(Prof::LightPdf);
     *pdfPos = 0;
-    *pdfDir = (CosTheta(WorldToLight(ray.d)) >= cosTotalWidth)
+    *pdfDir = (CosTheta(WToL(ray.d)) >= cosTotalWidth)
                   ? UniformConePdf(cosTotalWidth)
                   : 0;
+}
+
+void SpotLight::AdjustDirection(Vector3f &dir)
+{
+Vector3f du, dv;
+CoordinateSystem(dir, &du, &dv);
+Transform dirToZ =
+    Transform(Matrix4x4(du.x, du.y, du.z, 0., dv.x, dv.y, dv.z, 0., dir.x,
+                        dir.y, dir.z, 0., 0, 0, 0, 1.));
+LToW =
+    l2w * Translate(Vector3f(from.x, from.y, from.z)) * Inverse(dirToZ);
+WToL = Inverse(LToW); 
+}
+
+std::shared_ptr<SpotLight> SpotLight::doClone() {
+    return std::make_shared<SpotLight>(*this);
+}
+
+std::shared_ptr<Light> SpotLight::Clone() {
+    return doClone();
 }
 
 std::shared_ptr<SpotLight> CreateSpotLight(const Transform &l2w,
@@ -119,7 +156,7 @@ std::shared_ptr<SpotLight> CreateSpotLight(const Transform &l2w,
                             dir.y, dir.z, 0., 0, 0, 0, 1.));
     Transform light2world =
         l2w * Translate(Vector3f(from.x, from.y, from.z)) * Inverse(dirToZ);
-    return std::make_shared<SpotLight>(light2world, medium, I * sc, coneangle,
+    return std::make_shared<SpotLight>(l2w, from, light2world, medium, I * sc, coneangle,
                                        coneangle - conedelta);
 }
 

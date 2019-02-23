@@ -66,6 +66,8 @@ class GonioPhotometricLight : public Light {
         if (texels)
             mipmap.reset(new MIPMap<RGBSpectrum>(resolution, texels.get()));
     }
+    GonioPhotometricLight(GonioPhotometricLight& light) 
+        : Light(light) {}
     Spectrum Scale(const Vector3f &w) const {
         Vector3f wp = Normalize(WorldToLight(w));
         std::swap(wp.y, wp.z);
@@ -82,6 +84,12 @@ class GonioPhotometricLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir) {
+        return;
+    }
+
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<GonioPhotometricLight> doClone();
 
   private:
     // GonioPhotometricLight Private Data

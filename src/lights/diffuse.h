@@ -53,6 +53,11 @@ class DiffuseAreaLight : public AreaLight {
                      const MediumInterface &mediumInterface, const Spectrum &Le,
                      int nSamples, const std::shared_ptr<Shape> &shape,
                      bool twoSided = false);
+
+    DiffuseAreaLight(DiffuseAreaLight &light) 
+        : AreaLight(light), shape(light.shape), twoSided(light.twoSided),
+          area(light.area), Lemit(light.Lemit) {}
+
     Spectrum L(const Interaction &intr, const Vector3f &w) const {
         return (twoSided || Dot(intr.n, w) > 0) ? Lemit : Spectrum(0.f);
     }
@@ -65,6 +70,12 @@ class DiffuseAreaLight : public AreaLight {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir) {
+        return;
+    }
+
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<DiffuseAreaLight> doClone();
 
   protected:
     // DiffuseAreaLight Protected Data

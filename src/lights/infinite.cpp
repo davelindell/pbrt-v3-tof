@@ -83,6 +83,9 @@ InfiniteAreaLight::InfiniteAreaLight(const Transform &LightToWorld,
     distribution.reset(new Distribution2D(img.get(), width, height));
 }
 
+InfiniteAreaLight::InfiniteAreaLight(InfiniteAreaLight &light)
+    : Light(light) {}
+
 Spectrum InfiniteAreaLight::Power() const {
     return Pi * worldRadius * worldRadius *
            Spectrum(Lmap->Lookup(Point2f(.5f, .5f), .5f),
@@ -171,6 +174,14 @@ void InfiniteAreaLight::Pdf_Le(const Ray &ray, const Normal3f &, Float *pdfPos,
     Float mapPdf = distribution->Pdf(uv);
     *pdfDir = mapPdf / (2 * Pi * Pi * std::sin(theta));
     *pdfPos = 1 / (Pi * worldRadius * worldRadius);
+}
+
+std::shared_ptr<Light> InfiniteAreaLight::Clone() {
+    return doClone();
+}
+
+std::shared_ptr<InfiniteAreaLight> InfiniteAreaLight::doClone() {
+    return std::make_shared<InfiniteAreaLight>(*this);
 }
 
 std::shared_ptr<InfiniteAreaLight> CreateInfiniteLight(

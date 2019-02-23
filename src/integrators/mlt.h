@@ -133,6 +133,24 @@ class MLTIntegrator : public Integrator {
     const Float sigma, largeStepProbability;
 };
 
+//extern int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
+//                                 MemoryArena &arena, int maxDepth,
+//                                 const Camera &camera, const Point2f &pFilm,
+//                                 Vertex *path);
+//
+//extern int GenerateLightSubpath(
+//    const Scene &scene, Sampler &sampler, MemoryArena &arena, int maxDepth,
+//    Float time, const Distribution1D &lightDistr,
+//    const std::unordered_map<const Light *, size_t> &lightToIndex,
+//    Vertex *path);
+//
+//Spectrum ConnectBDPT(const Scene &scene, Vertex *lightVertices, Vertex *cameraVertices, int s,
+//    int t, const Distribution1D &lightDistr,
+//    const std::unordered_map<const Light *, size_t> &lightToIndex,
+//    const Camera &camera, Sampler &sampler, Point2f *pRaster,
+//    Float *misWeight = nullptr);
+
+
 MLTIntegrator *CreateMLTIntegrator(const ParamSet &params,
                                    std::shared_ptr<const Camera> camera);
 

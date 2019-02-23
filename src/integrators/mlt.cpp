@@ -265,6 +265,207 @@ void MLTIntegrator::Render(const Scene &scene) {
     camera->film->WriteImage(b / mutationsPerPixel);
 }
 
+//int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
+//                          MemoryArena &arena, int maxDepth,
+//                          const Camera &camera, const Point2f &pFilm,
+//                          Vertex *path) {
+//    if (maxDepth == 0) return 0;
+//    ProfilePhase _(Prof::BDPTGenerateSubpath);
+//    // Sample initial ray for camera subpath
+//    CameraSample cameraSample;
+//    cameraSample.pFilm = pFilm;
+//    cameraSample.time = sampler.Get1D();
+//    cameraSample.pLens = sampler.Get2D();
+//    RayDifferential ray;
+//    Spectrum beta = camera.GenerateRayDifferential(cameraSample, &ray);
+//    ray.ScaleDifferentials(1 / std::sqrt(sampler.samplesPerPixel));
+//
+//    // adjust spotlight to point along the camera ray direction
+//    for (size_t i = 0; i < scene.lights.size(); ++i)
+//        scene.lights[i].get()->AdjustDirection(ray.d);
+//
+//    // Generate first vertex on camera subpath and start random walk
+//    Float pdfPos, pdfDir;
+//    path[0] = Vertex::CreateCamera(&camera, ray, beta);
+//    camera.Pdf_We(ray, &pdfPos, &pdfDir);
+//    VLOG(2) << "Starting camera subpath. Ray: " << ray << ", beta " << beta
+//            << ", pdfPos " << pdfPos << ", pdfDir " << pdfDir;
+//    return RandomWalk(scene, ray, sampler, arena, beta, pdfDir, maxDepth - 1,
+//                      TransportMode::Radiance, path + 1) +
+//           1;
+//}
+//
+//int GenerateLightSubpath(
+//    const Scene &scene, Sampler &sampler, MemoryArena &arena, int maxDepth,
+//    Float time, const Distribution1D &lightDistr,
+//    const std::unordered_map<const Light *, size_t> &lightToIndex,
+//    Vertex *path) {
+//    if (maxDepth == 0) return 0;
+//    ProfilePhase _(Prof::BDPTGenerateSubpath);
+//    // Sample initial ray for light subpath
+//    Float lightPdf;
+//    int lightNum = lightDistr.SampleDiscrete(sampler.Get1D(), &lightPdf);
+//    const std::shared_ptr<Light> &light = scene.lights[lightNum];
+//    RayDifferential ray;
+//    Normal3f nLight;
+//    Float pdfPos, pdfDir;
+//    Spectrum Le = light->Sample_Le(sampler.Get2D(), sampler.Get2D(), time, &ray,
+//                                   &nLight, &pdfPos, &pdfDir);
+//    if (pdfPos == 0 || pdfDir == 0 || Le.IsBlack()) return 0;
+//
+//    // Generate first vertex on light subpath and start random walk
+//    path[0] =
+//        Vertex::CreateLight(light.get(), ray, nLight, Le, pdfPos * lightPdf);
+//    Spectrum beta = Le * AbsDot(nLight, ray.d) / (lightPdf * pdfPos * pdfDir);
+//    VLOG(2) << "Starting light subpath. Ray: " << ray << ", Le " << Le <<
+//        ", beta " << beta << ", pdfPos " << pdfPos << ", pdfDir " << pdfDir;
+//    int nVertices =
+//        RandomWalk(scene, ray, sampler, arena, beta, pdfDir, maxDepth - 1,
+//                   TransportMode::Importance, path + 1);
+//
+//    // Correct subpath sampling densities for infinite area lights
+//    if (path[0].IsInfiniteLight()) {
+//        // Set spatial density of _path[1]_ for infinite area light
+//        if (nVertices > 0) {
+//            path[1].pdfFwd = pdfPos;
+//            if (path[1].IsOnSurface())
+//                path[1].pdfFwd *= AbsDot(ray.d, path[1].ng());
+//        }
+//
+//        // Set spatial density of _path[0]_ for infinite area light
+//        path[0].pdfFwd =
+//            InfiniteLightDensity(scene, lightDistr, lightToIndex, ray.d);
+//    }
+//    return nVertices + 1;
+//}
+//
+//Spectrum ConnectBDPT(
+//    const Scene &scene, Vertex *lightVertices, Vertex *cameraVertices, int s,
+//    int t, const Distribution1D &lightDistr,
+//    const std::unordered_map<const Light *, size_t> &lightToIndex,
+//    const Camera &camera, Sampler &sampler, Point2f *pRaster,
+//    Float *misWeightPtr) {
+//    ProfilePhase _(Prof::BDPTConnectSubpaths);
+//    Spectrum L(0.f);
+//    // Ignore invalid connections related to infinite area lights
+//    if (t > 1 && s != 0 && cameraVertices[t - 1].type == VertexType::Light)
+//        return Spectrum(0.f);
+//
+//    // Perform connection and write contribution to _L_
+//    Vertex sampled;
+//    if (s == 0) {
+//        // Interpret the camera subpath as a complete path
+//        const Vertex &pt = cameraVertices[t - 1];
+//        if (pt.IsLight()) L = pt.Le(scene, cameraVertices[t - 2]) * pt.beta;
+//        DCHECK(!L.HasNaNs());
+//        float distance = 0;
+//        for (int i = 0; i < t-1; ++i) {
+//            distance += Distance(cameraVertices[i].p(), cameraVertices[i+1].p()); 
+//        }
+//        L = L.AddTimeOfFlight(distance);
+//
+//    } else if (t == 1) {
+//        // Sample a point on the camera and connect it to the light subpath
+//        const Vertex &qs = lightVertices[s - 1];
+//        if (qs.IsConnectible()) {
+//            VisibilityTester vis;
+//            Vector3f wi;
+//            Float pdf;
+//            Spectrum Wi = camera.Sample_Wi(qs.GetInteraction(), sampler.Get2D(),
+//                                           &wi, &pdf, pRaster, &vis);
+//            if (pdf > 0 && !Wi.IsBlack()) {
+//                // Initialize dynamically sampled vertex and _L_ for $t=1$ case
+//                sampled = Vertex::CreateCamera(&camera, vis.P1(), Wi / pdf);
+//                L = qs.beta * qs.f(sampled, TransportMode::Importance) * sampled.beta;
+//                if (qs.IsOnSurface()) L *= AbsDot(wi, qs.ns());
+//                DCHECK(!L.HasNaNs());
+//                // Only check visibility after we know that the path would
+//                // make a non-zero contribution.
+//                if (!L.IsBlack()) L *= vis.Tr(scene, sampler);
+//
+//                // calculate distance camera -> light
+//                float distance = 0;
+//                for (int i = 0; i < s-1; ++i) {
+//                    distance += Distance(lightVertices[i].p(), lightVertices[i+1].p()); 
+//                }
+//                distance += Distance(lightVertices[s-1].p(), sampled.p());
+//                L = L.AddTimeOfFlight(distance);
+//            }
+//        }
+//    } else if (s == 1) {
+//        // Sample a point on a light and connect it to the camera subpath
+//        const Vertex &pt = cameraVertices[t - 1];
+//        if (pt.IsConnectible()) {
+//            Float lightPdf;
+//            VisibilityTester vis;
+//            Vector3f wi;
+//            Float pdf;
+//            int lightNum =
+//                lightDistr.SampleDiscrete(sampler.Get1D(), &lightPdf);
+//            const std::shared_ptr<Light> &light = scene.lights[lightNum];
+//            Spectrum lightWeight = light->Sample_Li(
+//                pt.GetInteraction(), sampler.Get2D(), &wi, &pdf, &vis);
+//            if (pdf > 0 && !lightWeight.IsBlack()) {
+//                EndpointInteraction ei(vis.P1(), light.get());
+//                sampled =
+//                    Vertex::CreateLight(ei, lightWeight / (pdf * lightPdf), 0);
+//                sampled.pdfFwd =
+//                    sampled.PdfLightOrigin(scene, pt, lightDistr, lightToIndex);
+//                L = pt.beta * pt.f(sampled, TransportMode::Radiance) * sampled.beta;
+//                if (pt.IsOnSurface()) L *= AbsDot(wi, pt.ns());
+//                // Only check visibility if the path would carry radiance.
+//                if (!L.IsBlack()) L *= vis.Tr(scene, sampler);
+//
+//                // calculate distance camera -> light
+//                float distance = 0;
+//                for (int i = 0; i < t-1; ++i) {
+//                    distance += Distance(cameraVertices[i].p(), cameraVertices[i+1].p()); 
+//                }
+//                distance += Distance(cameraVertices[t-1].p(), sampled.p());
+//                L = L.AddTimeOfFlight(distance);
+//
+//                //L = L.AddTimeOfFlight(Distance(sampled.p(), pt.p()));
+//            }
+//        }
+//    } else {
+//        // Handle all other bidirectional connection cases
+//        const Vertex &qs = lightVertices[s - 1], &pt = cameraVertices[t - 1];
+//        if (qs.IsConnectible() && pt.IsConnectible()) {
+//            L = qs.beta * qs.f(pt, TransportMode::Importance) * pt.f(qs, TransportMode::Radiance) * pt.beta;
+//            VLOG(2) << "General connect s: " << s << ", t: " << t <<
+//                " qs: " << qs << ", pt: " << pt << ", qs.f(pt): " << qs.f(pt, TransportMode::Importance) <<
+//                ", pt.f(qs): " << pt.f(qs, TransportMode::Radiance) << ", G: " << G(scene, sampler, qs, pt) <<
+//                ", dist^2: " << DistanceSquared(qs.p(), pt.p());
+//            if (!L.IsBlack()) L *= G(scene, sampler, qs, pt);
+//
+//            float distance = 0;
+//            for (int i = 0; i < t-1; ++i) {
+//                distance += Distance(cameraVertices[i].p(), cameraVertices[i+1].p()); 
+//            }
+//            distance += Distance(cameraVertices[t-1].p(), lightVertices[s-1].p());
+//            for (int i = 0; i < s-1; ++i) {
+//                distance += Distance(lightVertices[i].p(), lightVertices[i+1].p()); 
+//            }
+//            L = L.AddTimeOfFlight(distance);
+//        }
+//    }
+//
+//    ++totalPaths;
+//    if (L.IsBlack()) ++zeroRadiancePaths;
+//    ReportValue(pathLength, s + t - 2);
+//
+//    // Compute MIS weight for connection strategy
+//    Float misWeight =
+//        L.IsBlack() ? 0.f : MISWeight(scene, lightVertices, cameraVertices,
+//                                      sampled, s, t, lightDistr, lightToIndex);
+//    VLOG(2) << "MIS weight for (s,t) = (" << s << ", " << t << ") connection: "
+//            << misWeight;
+//    DCHECK(!std::isnan(misWeight));
+//    L *= misWeight;
+//    if (misWeightPtr) *misWeightPtr = misWeight;
+//    return L;
+//}
+
 MLTIntegrator *CreateMLTIntegrator(const ParamSet &params,
                                    std::shared_ptr<const Camera> camera) {
     int maxDepth = params.FindOneInt("maxdepth", 5);

@@ -54,6 +54,7 @@ class PointLight : public Light {
         : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface),
           pLight(LightToWorld(Point3f(0, 0, 0))),
           I(I) {}
+    PointLight(PointLight &light) : Light(light) {}
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
                        Float *pdf, VisibilityTester *vis) const;
     Spectrum Power() const;
@@ -63,6 +64,12 @@ class PointLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir) {
+        return;
+    }
+
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<PointLight> doClone();
 
   private:
     // PointLight Private Data

@@ -89,6 +89,12 @@ inline Float CosDPhi(const Vector3f &wa, const Vector3f &wb) {
         -1, 1);
 }
 
+// Media Inline Functions
+inline Float ReflectanceHG(Float cosTheta, Float g) {
+    Float denom = 1 + g * g + 2 * g * cosTheta;
+    return Inv4Pi * (1 - g * g) / (denom * std::sqrt(denom));
+}
+
 inline Vector3f Reflect(const Vector3f &wo, const Vector3f &n) {
     return -wo + 2 * Dot(wo, n) * n;
 }
@@ -405,6 +411,23 @@ class LambertianTransmission : public BxDF {
   private:
     // LambertianTransmission Private Data
     Spectrum T;
+};
+
+class HenyeyGreensteinReflection : public BxDF {
+  public:
+    // LambertianReflection Public Methods
+    HenyeyGreensteinReflection(const Spectrum &R, const Float &g)
+        : BxDF(BxDFType(BSDF_REFLECTION | BSDF_GLOSSY)), R(R), g(g) {}
+    Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
+    Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &sample,
+                      Float *pdf, BxDFType *sampledType) const;
+    Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
+    std::string ToString() const;
+
+  private:
+    // HenyeyGreensteinReflection Private Data
+    const Spectrum R;
+    Float g;
 };
 
 class OrenNayar : public BxDF {

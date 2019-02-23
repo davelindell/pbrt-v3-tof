@@ -49,8 +49,10 @@ namespace pbrt {
 class SpotLight : public Light {
   public:
     // SpotLight Public Methods
-    SpotLight(const Transform &LightToWorld, const MediumInterface &m,
+    SpotLight(const Transform &l2w, const Point3f &from,
+              const Transform &LightToWorld, const MediumInterface &m,
               const Spectrum &I, Float totalWidth, Float falloffStart);
+    SpotLight(SpotLight &light);
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
                        Float *pdf, VisibilityTester *vis) const;
     Float Falloff(const Vector3f &w) const;
@@ -61,12 +63,19 @@ class SpotLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir);
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<SpotLight> doClone();
 
   private:
     // SpotLight Private Data
     const Point3f pLight;
     const Spectrum I;
     const Float cosTotalWidth, cosFalloffStart;
+    Transform LToW;
+    Transform WToL;
+    const Transform l2w;
+    const Point3f from;
 };
 
 std::shared_ptr<SpotLight> CreateSpotLight(const Transform &l2w,

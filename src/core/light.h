@@ -65,6 +65,7 @@ class Light {
     virtual ~Light();
     Light(int flags, const Transform &LightToWorld,
           const MediumInterface &mediumInterface, int nSamples = 1);
+    Light(Light &light);
     virtual Spectrum Sample_Li(const Interaction &ref, const Point2f &u,
                                Vector3f *wi, Float *pdf,
                                VisibilityTester *vis) const = 0;
@@ -77,6 +78,8 @@ class Light {
                                Float *pdfDir) const = 0;
     virtual void Pdf_Le(const Ray &ray, const Normal3f &nLight, Float *pdfPos,
                         Float *pdfDir) const = 0;
+    virtual void AdjustDirection(Vector3f &dir) = 0;
+    virtual std::shared_ptr<Light> Clone() = 0;
 
     // Light Public Data
     const int flags;
@@ -108,6 +111,7 @@ class AreaLight : public Light {
     // AreaLight Interface
     AreaLight(const Transform &LightToWorld, const MediumInterface &medium,
               int nSamples);
+    AreaLight(AreaLight &light) : Light(light) {}
     virtual Spectrum L(const Interaction &intr, const Vector3f &w) const = 0;
 };
 

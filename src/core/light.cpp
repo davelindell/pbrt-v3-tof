@@ -54,6 +54,14 @@ Light::Light(int flags, const Transform &LightToWorld,
     ++numLights;
 }
 
+Light::Light(Light &light)
+    : flags(light.flags),
+      nSamples(std::max(1, light.nSamples)),
+      mediumInterface(light.mediumInterface),
+      LightToWorld(light.LightToWorld),
+      WorldToLight(Inverse(light.LightToWorld)) {
+}
+
 Light::~Light() {}
 
 bool VisibilityTester::Unoccluded(const Scene &scene) const {

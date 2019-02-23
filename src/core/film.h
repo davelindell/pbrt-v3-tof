@@ -78,13 +78,22 @@ class Film {
     const std::string filename;
     Bounds2i croppedPixelBounds;
 
+    int GetPixelOffset(const Point2i &p) {
+        if (!InsideExclusive((Point2i)p, croppedPixelBounds)) return -1;
+        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+        int offset = (p.x - croppedPixelBounds.pMin.x) +
+                     (p.y - croppedPixelBounds.pMin.y) * width;
+        return offset;
+    }
+
   private:
     // Film Private Data
     struct Pixel {
         Pixel() { xyz[0] = xyz[1] = xyz[2] = filterWeightSum = 0; }
         Float xyz[3];
+        Spectrum L;
         Float filterWeightSum;
-        AtomicFloat splatXYZ[3];
+        AtomicFloat splatXYZ[3*nTimeBins];
         Float pad;
     };
     std::unique_ptr<Pixel[]> pixels;

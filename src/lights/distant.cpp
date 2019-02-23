@@ -91,6 +91,14 @@ void DistantLight::Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
     *pdfDir = 0;
 }
 
+std::shared_ptr<Light> DistantLight::Clone() {
+    return doClone();
+}
+
+std::shared_ptr<DistantLight> DistantLight::doClone() {
+    return std::make_shared<DistantLight>(*this);
+}
+
 std::shared_ptr<DistantLight> CreateDistantLight(const Transform &light2world,
                                                  const ParamSet &paramSet) {
     Spectrum L = paramSet.FindOneSpectrum("L", Spectrum(1.0));

@@ -83,6 +83,14 @@ void GonioPhotometricLight::Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
     *pdfDir = UniformSpherePdf();
 }
 
+std::shared_ptr<Light> GonioPhotometricLight::Clone() {
+    return doClone();
+}
+
+std::shared_ptr<GonioPhotometricLight> GonioPhotometricLight::doClone() {
+    return std::make_shared<GonioPhotometricLight>(*this);
+}
+
 std::shared_ptr<GonioPhotometricLight> CreateGoniometricLight(
     const Transform &light2world, const Medium *medium,
     const ParamSet &paramSet) {

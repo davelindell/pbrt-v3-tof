@@ -48,6 +48,7 @@ namespace pbrt {
 static const int sampledLambdaStart = 400;
 static const int sampledLambdaEnd = 700;
 static const int nSpectralSamples = 60;
+static const int nTimeBins = 256;
 extern bool SpectrumSamplesSorted(const Float *lambda, const Float *vals,
                                   int n);
 extern void SortSpectrumSamples(Float *lambda, Float *vals, int n);
@@ -280,10 +281,9 @@ class CoefficientSpectrum {
 
     // CoefficientSpectrum Public Data
     static const int nSamples = nSpectrumSamples;
-
+    Float c[nSpectrumSamples];
   protected:
     // CoefficientSpectrum Protected Data
-    Float c[nSpectrumSamples];
 };
 
 class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
@@ -487,6 +487,113 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
     }
 };
 
+class TOFSpectrum : public CoefficientSpectrum<3*nTimeBins> {
+    using CoefficientSpectrum<3*nTimeBins>::c;
+
+  public:
+    // TOFSpectrum Public Methods
+    TOFSpectrum(Float v = 0.f) : CoefficientSpectrum<3*nTimeBins>(v) {}
+    TOFSpectrum(const CoefficientSpectrum<3*nTimeBins> &v) : CoefficientSpectrum<3*nTimeBins>(v) {}
+    TOFSpectrum(const RGBSpectrum &s,
+                SpectrumType type = SpectrumType::Reflectance) {
+        Float rgb[3];
+        s.ToRGB(rgb);
+        c[0] = rgb[0];
+        c[1] = rgb[1];
+        c[2] = rgb[2];
+    }
+    static TOFSpectrum FromRGB(const Float rgb[3],
+                               SpectrumType type = SpectrumType::Reflectance) {
+        TOFSpectrum s;
+        s.c[0] = rgb[0];
+        s.c[1] = rgb[1];
+        s.c[2] = rgb[2];
+        DCHECK(!s.HasNaNs());
+        return s;
+    }
+    void ToRGB(Float *rgb) const {
+        rgb[0] = c[0];
+        rgb[1] = c[1];
+        rgb[2] = c[2];
+    }
+    RGBSpectrum ToRGBSpectrum() const { return RGBSpectrum(); }
+    void ToXYZ(Float xyz[3]) const { RGBToXYZ(c, xyz); }
+    void ToXYZ(Float xyz[3], int timeBin) const {
+        timeBin = floor(timeBin);
+        if (timeBin < nTimeBins) {
+            RGBToXYZ(c + 3*timeBin, xyz);
+        }
+    }
+    static TOFSpectrum FromXYZ(const Float xyz[3],
+                               SpectrumType type = SpectrumType::Reflectance) {
+        TOFSpectrum r;
+        XYZToRGB(xyz, r.c);
+        return r;
+    }
+    Float y() const {
+        const Float YWeight[3] = {0.212671f, 0.715160f, 0.072169f};
+        Float val = 0;
+        for (int k = 0; k < nTimeBins; k++) {
+            val += YWeight[0] * c[3*k+0] + YWeight[1] * c[3*k+1] + YWeight[2] * c[3*k+2];
+        }
+        return val;
+    }
+    static TOFSpectrum FromSampled(const Float *lambda, const Float *v, int n) {
+        // Sort samples if unordered, use sorted for returned spectrum
+        if (!SpectrumSamplesSorted(lambda, v, n)) {
+            std::vector<Float> slambda(&lambda[0], &lambda[n]);
+            std::vector<Float> sv(&v[0], &v[n]);
+            SortSpectrumSamples(&slambda[0], &sv[0], n);
+            return FromSampled(&slambda[0], &sv[0], n);
+        }
+        Float xyz[3] = {0, 0, 0};
+        for (int i = 0; i < nCIESamples; ++i) {
+            Float val = InterpolateSpectrumSamples(lambda, v, n, CIE_lambda[i]);
+            xyz[0] += val * CIE_X[i];
+            xyz[1] += val * CIE_Y[i];
+            xyz[2] += val * CIE_Z[i];
+        }
+        Float scale = Float(CIE_lambda[nCIESamples - 1] - CIE_lambda[0]) /
+                      Float(CIE_Y_integral * nCIESamples);
+        xyz[0] *= scale;
+        xyz[1] *= scale;
+        xyz[2] *= scale;
+        return FromXYZ(xyz);
+    }
+    TOFSpectrum AddTimeOfFlight(float time) {
+        TOFSpectrum L;
+        time = 128*time;
+        int offset = floor(time);
+        Float weight = 1-time+floor(time);
+        for (int k = 0; k < nTimeBins; k++) {
+            if (k+offset < nTimeBins) {
+                L.c[3*(k+offset)+0] += weight*c[3*k+0];
+                L.c[3*(k+offset)+1] += weight*c[3*k+1];
+                L.c[3*(k+offset)+2] += weight*c[3*k+2];
+            }
+        }
+        weight = 1-weight;
+        offset = offset+1;
+        for (int k = 0; k < nTimeBins; k++) {
+            if (k+offset < nTimeBins) {
+                L.c[3*(k+offset)+0] += weight*c[3*k+0];
+                L.c[3*(k+offset)+1] += weight*c[3*k+1];
+                L.c[3*(k+offset)+2] += weight*c[3*k+2];
+            }
+        }
+        return L;
+    }
+    TOFSpectrum MakeUniformAcrossTime() {
+        TOFSpectrum L;
+        for (int k = 0; k < nTimeBins; k++) {
+            L.c[3*k+0] = c[0];
+            L.c[3*k+1] = c[1];
+            L.c[3*k+2] = c[2];
+        }
+        return L;
+    }
+};
+
 // Spectrum Inline Functions
 template <int nSpectrumSamples>
 inline CoefficientSpectrum<nSpectrumSamples> Pow(
@@ -503,6 +610,10 @@ inline RGBSpectrum Lerp(Float t, const RGBSpectrum &s1, const RGBSpectrum &s2) {
 
 inline SampledSpectrum Lerp(Float t, const SampledSpectrum &s1,
                             const SampledSpectrum &s2) {
+    return (1 - t) * s1 + t * s2;
+}
+
+inline TOFSpectrum Lerp(Float t, const TOFSpectrum &s1, const TOFSpectrum &s2) {
     return (1 - t) * s1 + t * s2;
 }
 

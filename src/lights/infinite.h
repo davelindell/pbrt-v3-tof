@@ -54,6 +54,7 @@ class InfiniteAreaLight : public Light {
     // InfiniteAreaLight Public Methods
     InfiniteAreaLight(const Transform &LightToWorld, const Spectrum &power,
                       int nSamples, const std::string &texmap);
+    InfiniteAreaLight(InfiniteAreaLight &light);
     void Preprocess(const Scene &scene) {
         scene.WorldBound().BoundingSphere(&worldCenter, &worldRadius);
     }
@@ -67,6 +68,12 @@ class InfiniteAreaLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
+    void AdjustDirection(Vector3f &dir) {
+        return;
+    }
+
+    std::shared_ptr<Light> Clone();
+    std::shared_ptr<InfiniteAreaLight> doClone();
 
   private:
     // InfiniteAreaLight Private Data
