@@ -186,7 +186,7 @@ class BSDF {
                  BxDFType flags = BSDF_ALL) const;
     Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,
                       Float *pdf, BxDFType type = BSDF_ALL,
-                      BxDFType *sampledType = nullptr) const;
+                      BxDFType *sampledType = nullptr);
     Float Pdf(const Vector3f &wo, const Vector3f &wi,
               BxDFType flags = BSDF_ALL) const;
     std::string ToString() const;
@@ -199,8 +199,8 @@ class BSDF {
     ~BSDF() {}
 
     // BSDF Private Data
-    const Normal3f ns, ng;
-    const Vector3f ss, ts;
+    Normal3f ns, ng;
+    Vector3f ss, ts;
     int nBxDFs = 0;
     static PBRT_CONSTEXPR int MaxBxDFs = 8;
     BxDF *bxdfs[MaxBxDFs];
@@ -229,10 +229,26 @@ class BxDF {
                          const Point2f *samples2) const;
     virtual Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
     virtual std::string ToString() const = 0;
+    virtual bool is2d() {
+        return false;
+    }
 
     // BxDF Public Data
     const BxDFType type;
 };
+
+class BxDF2d : public BxDF {
+  public:
+    // BxDF Interface
+    BxDF2d(BxDFType type) : BxDF(type) {}
+    virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
+                              const Point2f &sample, Float *pdf,
+                              BxDFType *sampledType = nullptr) const;
+    bool is2d() {
+        return true;
+    }
+};
+
 
 inline std::ostream &operator<<(std::ostream &os, const BxDF &bxdf) {
     os << bxdf.ToString();
@@ -304,6 +320,48 @@ class FresnelNoOp : public Fresnel {
   public:
     Spectrum Evaluate(Float) const { return Spectrum(1.); }
     std::string ToString() const { return "[ FresnelNoOp ]"; }
+};
+
+class RetroreflectiveReflection : public BxDF {
+  public:
+    // RetroreflectiveReflection Public Methods
+    RetroreflectiveReflection(const Spectrum &R, Fresnel *fresnel)
+        : BxDF(BxDFType(BSDF_REFLECTION | BSDF_SPECULAR)),
+          R(R),
+          fresnel(fresnel) {}
+    Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
+        return Spectrum(0.f);
+    }
+    virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &sample,
+                      Float *pdf, BxDFType *sampledType) const;
+    Float Pdf(const Vector3f &wo, const Vector3f &wi) const { return 0; }
+    std::string ToString() const;
+
+  private:
+    // RetroreflectiveReflection Private Data
+    const Spectrum R;
+    const Fresnel *fresnel;
+};
+
+class RetroreflectiveReflection2d : public BxDF2d {
+  public:
+    // RetroreflectiveReflection Public Methods
+    RetroreflectiveReflection2d(const Spectrum &R, Fresnel *fresnel)
+        : BxDF2d(BxDFType(BSDF_REFLECTION | BSDF_GLOSSY)),
+          R(R),
+          fresnel(fresnel) {}
+    Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &sample,
+                      Float *pdf, BxDFType *sampledType) const;
+    Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
+        return Spectrum(0.f);
+    }
+    Float Pdf(const Vector3f &wo, const Vector3f &wi) const { return 0; }
+    std::string ToString() const;
+
+  private:
+    // RetroreflectiveReflection Private Data
+    const Spectrum R;
+    const Fresnel *fresnel;
 };
 
 class SpecularReflection : public BxDF {
@@ -395,6 +453,21 @@ class LambertianReflection : public BxDF {
     const Spectrum R;
 };
 
+class LambertianReflection2d : public BxDF2d {
+  public:
+    // LambertianReflection Public Methods
+    LambertianReflection2d(const Spectrum &R)
+        : BxDF2d(BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE)), R(R) {}
+    Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
+    Spectrum rho(const Vector3f &, int, const Point2f *) const { return R; }
+    Spectrum rho(int, const Point2f *, const Point2f *) const { return R; }
+    std::string ToString() const;
+
+  private:
+    // LambertianReflection Private Data
+    const Spectrum R;
+};
+
 class LambertianTransmission : public BxDF {
   public:
     // LambertianTransmission Public Methods
@@ -418,6 +491,23 @@ class HenyeyGreensteinReflection : public BxDF {
     // LambertianReflection Public Methods
     HenyeyGreensteinReflection(const Spectrum &R, const Float &g)
         : BxDF(BxDFType(BSDF_REFLECTION | BSDF_GLOSSY)), R(R), g(g) {}
+    Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
+    Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &sample,
+                      Float *pdf, BxDFType *sampledType) const;
+    Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
+    std::string ToString() const;
+
+  private:
+    // HenyeyGreensteinReflection Private Data
+    const Spectrum R;
+    Float g;
+};
+
+class HenyeyGreensteinReflection2d : public BxDF2d {
+  public:
+    // LambertianReflection Public Methods
+    HenyeyGreensteinReflection2d(const Spectrum &R, const Float &g)
+        : BxDF2d(BxDFType(BSDF_REFLECTION | BSDF_GLOSSY)), R(R), g(g) {}
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
     Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &sample,
                       Float *pdf, BxDFType *sampledType) const;

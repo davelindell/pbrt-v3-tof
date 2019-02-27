@@ -42,6 +42,34 @@ namespace pbrt {
 STAT_MEMORY_COUNTER("Memory/Film pixels", filmPixelMemory);
 
 // Film Method Definitions
+
+Film::Film(Film *film) 
+    : fullResolution(film->fullResolution),
+      diagonal(film->diagonal),
+      filter(std::move(film->filter)),
+      filename(film->filename),
+      scale(film->scale),
+      maxSampleLuminance(film->maxSampleLuminance) {
+      croppedPixelBounds = 
+        Bounds2i(Point2i(film->croppedPixelBounds.pMin.x, film->croppedPixelBounds.pMin.y),
+                 Point2i(film->croppedPixelBounds.pMax.x, film->croppedPixelBounds.pMax.y));
+    
+     // Allocate film image storage
+    pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
+    filmPixelMemory += croppedPixelBounds.Area() * sizeof(Pixel);
+
+    // Precompute filter weight table
+    int offset = 0;
+    for (int y = 0; y < filterTableWidth; ++y) {
+        for (int x = 0; x < filterTableWidth; ++x, ++offset) {
+            Point2f p;
+            p.x = (x + 0.5f) * filter->radius.x / filterTableWidth;
+            p.y = (y + 0.5f) * filter->radius.y / filterTableWidth;
+            filterTable[offset] = filter->Evaluate(p);
+        }
+    }        
+} 
+
 Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
            std::unique_ptr<Filter> filt, Float diagonal,
            const std::string &filename, Float scale, Float maxSampleLuminance)

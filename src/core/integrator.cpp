@@ -382,7 +382,7 @@ Spectrum SamplerIntegrator::SpecularTransmit(
     Vector3f wo = isect.wo, wi;
     Float pdf;
     const Point3f &p = isect.p;
-    const BSDF &bsdf = *isect.bsdf;
+    BSDF &bsdf = *isect.bsdf;
     Spectrum f = bsdf.Sample_f(wo, &wi, sampler.Get2D(), &pdf,
                                BxDFType(BSDF_TRANSMISSION | BSDF_SPECULAR));
     Spectrum L = Spectrum(0.f);

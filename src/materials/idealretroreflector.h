@@ -35,52 +35,33 @@
 #pragma once
 #endif
 
-#ifndef PBRT_LIGHTS_POINT_H
-#define PBRT_LIGHTS_POINT_H
+#ifndef PBRT_MATERIALS_IDEALRETROREFLECTOR_H
+#define PBRT_MATERIALS_IDEALRETROREFLECTOR_H
 
-// lights/point.h*
+// materials/plastic.h*
 #include "pbrt.h"
-#include "light.h"
-#include "shape.h"
+#include "material.h"
 
 namespace pbrt {
 
-// PointLight Declarations
-class PointLight : public Light {
+// PlasticMaterial Declarations
+class IdealRetroreflectorMaterial : public Material {
   public:
-    // PointLight Public Methods
-    PointLight(const Transform &LightToWorld,
-               const MediumInterface &mediumInterface, const Spectrum &I)
-        : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface),
-          pLight(LightToWorld(Point3f(0, 0, 0))),
-          I(I) {}
-    PointLight(PointLight &light) : Light(light), pLight(light.pLight), I(light.I) {}
-    Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
-                       Float *pdf, VisibilityTester *vis) const;
-    Spectrum Power() const;
-    Float Pdf_Li(const Interaction &, const Vector3f &) const;
-    Spectrum Sample_Le(const Point2f &u1, const Point2f &u2, Float time,
-                       Ray *ray, Normal3f *nLight, Float *pdfPos,
-                       Float *pdfDir) const;
-    void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
-                Float *pdfDir) const;
-    void AdjustDirection(Vector3f &dir) {
-        return;
-    }
-
-    std::shared_ptr<Light> Clone();
-    std::shared_ptr<PointLight> doClone();
-
+    // IdealRetroreflectorMaterial Public Methods
+    IdealRetroreflectorMaterial(const std::shared_ptr<Texture<Spectrum>> &Kr,
+          const std::shared_ptr<Texture<Float>> &eta)
+        : Kr(Kr), eta(eta) {}
+    void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
+                                    TransportMode mode,
+                                    bool allowMultipleLobes) const;
   private:
-    // PointLight Private Data
-    const Point3f pLight;
-    const Spectrum I;
+    // PlasticMaterial Private Data
+    std::shared_ptr<Texture<Spectrum>> Kr;
+    std::shared_ptr<Texture<Float>> eta;
 };
 
-std::shared_ptr<PointLight> CreatePointLight(const Transform &light2world,
-                                             const Medium *medium,
-                                             const ParamSet &paramSet);
+IdealRetroreflectorMaterial *CreateIdealRetroreflectorMaterial(const TextureParams &mp);
 
 }  // namespace pbrt
 
-#endif  // PBRT_LIGHTS_POINT_H
+#endif  // PBRT_MATERIALS_IDEALRETROREFLECTOR_H

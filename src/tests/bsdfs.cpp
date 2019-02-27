@@ -170,7 +170,7 @@ Float AdaptiveSimpson2D(const std::function<Float(Float, Float)>& f, Float x0,
 }
 
 /// Generate a histogram of the BSDF density function via MC sampling
-void FrequencyTable(const BSDF* bsdf, const Vector3f& wo, RNG& rng,
+void FrequencyTable(BSDF* bsdf, const Vector3f& wo, RNG& rng,
                     int sampleCount, int thetaRes, int phiRes, Float* target) {
     memset(target, 0, thetaRes * phiRes * sizeof(Float));
 

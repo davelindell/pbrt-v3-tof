@@ -190,7 +190,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
                             --depth;
                             continue;
                         }
-                        const BSDF &bsdf = *isect.bsdf;
+                        BSDF &bsdf = *isect.bsdf;
 
                         // Accumulate direct illumination at SPPM camera ray
                         // intersection
@@ -384,7 +384,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
                         photonRay = isect.SpawnRay(photonRay.d);
                         continue;
                     }
-                    const BSDF &photonBSDF = *isect.bsdf;
+                    BSDF &photonBSDF = *isect.bsdf;
 
                     // Sample BSDF _fr_ and direction _wi_ for reflected photon
                     Vector3f wi, wo = -photonRay.d;

@@ -562,7 +562,7 @@ class TOFSpectrum : public CoefficientSpectrum<3*nTimeBins> {
     }
     TOFSpectrum AddTimeOfFlight(float time) {
         TOFSpectrum L;
-        time = 128*time;
+        time = 256*time;
         int offset = floor(time);
         Float weight = 1-time+floor(time);
         for (int k = 0; k < nTimeBins; k++) {

@@ -374,6 +374,7 @@ SET ( PBRT_CORE_SOURCE
   src/core/error.cpp
   src/core/fileutil.cpp
   src/core/film.cpp
+  src/core/film2d.cpp
   src/core/filter.cpp
   src/core/floatfile.cpp
   src/core/geometry.cpp
@@ -414,6 +415,7 @@ SET ( PBRT_CORE_HEADERS
   src/core/error.h
   src/core/fileutil.h
   src/core/film.h
+  src/core/film2d.h
   src/core/filter.h
   src/core/floatfile.h
   src/core/geometry.h

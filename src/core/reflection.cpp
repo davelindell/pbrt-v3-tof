@@ -133,6 +133,34 @@ std::string FresnelDielectric::ToString() const {
     return StringPrintf("[ FrenselDielectric etaI: %f etaT: %f ]", etaI, etaT);
 }
 
+Spectrum RetroreflectiveReflection::Sample_f(const Vector3f &wo, Vector3f *wi,
+                                      const Point2f &sample, Float *pdf,
+                                      BxDFType *sampledType) const {
+    // Compute perfect specular reflection direction
+    *wi = Vector3f(wo.x, wo.y, wo.z);
+    *pdf = 1;
+    return fresnel->Evaluate(CosTheta(*wi)) * R / AbsCosTheta(*wi);
+}
+
+std::string RetroreflectiveReflection::ToString() const {
+    return std::string("[ RetroreflectiveReflection R: ") + R.ToString() +
+           std::string(" fresnel: ") + fresnel->ToString() + std::string(" ]");
+}
+
+Spectrum RetroreflectiveReflection2d::Sample_f(const Vector3f &wo, Vector3f *wi,
+                                      const Point2f &sample, Float *pdf,
+                                      BxDFType *sampledType) const {
+    // Compute perfect specular reflection direction
+    *wi = Vector3f(wo.x, 0, wo.z);
+    *pdf = 1;
+    return fresnel->Evaluate(CosTheta(*wi)) * R / AbsCosTheta(*wi);
+}
+
+std::string RetroreflectiveReflection2d::ToString() const {
+    return std::string("[ RetroreflectiveReflection2d R: ") + R.ToString() +
+           std::string(" fresnel: ") + fresnel->ToString() + std::string(" ]");
+}
+
 Spectrum SpecularReflection::Sample_f(const Vector3f &wo, Vector3f *wi,
                                       const Point2f &sample, Float *pdf,
                                       BxDFType *sampledType) const {
@@ -181,6 +209,15 @@ Spectrum LambertianReflection::f(const Vector3f &wo, const Vector3f &wi) const {
 
 std::string LambertianReflection::ToString() const {
     return std::string("[ LambertianReflection R: ") + R.ToString() +
+           std::string(" ]");
+}
+
+Spectrum LambertianReflection2d::f(const Vector3f &wo, const Vector3f &wi) const {
+    return R * InvPi;
+}
+
+std::string LambertianReflection2d::ToString() const {
+    return std::string("[ LambertianReflection2d R: ") + R.ToString() +
            std::string(" ]");
 }
 
@@ -388,6 +425,15 @@ Float BxDF::Pdf(const Vector3f &wo, const Vector3f &wi) const {
     return SameHemisphere(wo, wi) ? AbsCosTheta(wi) * InvPi : 0;
 }
 
+Spectrum BxDF2d::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,
+                        Float *pdf, BxDFType *sampledType) const {
+    // Cosine-sample the hemisphere, flipping the direction if necessary
+    *wi = CosineSampleArc(u);
+    if (wo.z < 0) wi->z *= -1;
+    *pdf = Pdf(wo, *wi);
+    return f(wo, *wi);
+}
+
 Spectrum LambertianTransmission::Sample_f(const Vector3f &wo, Vector3f *wi,
                                           const Point2f &u, Float *pdf,
                                           BxDFType *sampledType) const {
@@ -433,6 +479,41 @@ Spectrum HenyeyGreensteinReflection::f(const Vector3f &wo, const Vector3f &wi) c
 }
 
 std::string HenyeyGreensteinReflection::ToString() const {
+    return StringPrintf("[ HenyeyGreensteinReflection2d g: %f]", g);
+}
+
+Spectrum HenyeyGreensteinReflection2d::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,
+                        Float *pdf, BxDFType *sampledType) const {
+
+    Float cosTheta;
+    if (std::abs(g) < 1e-3)
+        cosTheta = 1 - 2 * u[0];
+    else {
+        Float sqrTerm = (1 - g * g) / (1 - g + 2 * g * u[0]);
+        cosTheta = (1 + g * g - sqrTerm * sqrTerm) / (2 * g);
+    }
+
+    Float sinTheta = std::sqrt(std::max((Float)0, 1 - cosTheta * cosTheta));
+    Float phi = 2 * Pi * u[1];
+    Vector3f v1, v2;
+    CoordinateSystem(wo, &v1, &v2);
+    *wi = SphericalDirection(sinTheta, cosTheta, phi, v1, v2, -wo);
+    *pdf = Pdf(wo, *wi);
+    wi->y = 0;
+    return f(wo, *wi);
+}
+
+Float HenyeyGreensteinReflection2d::Pdf(const Vector3f &wo, const Vector3f &wi) const {
+    Float f = ReflectanceHG(Dot(wo, wi), g); 
+    return f;
+}
+
+Spectrum HenyeyGreensteinReflection2d::f(const Vector3f &wo, const Vector3f &wi) const {
+    Float f = ReflectanceHG(Dot(wo, wi), g); 
+    return R * f;
+}
+
+std::string HenyeyGreensteinReflection2d::ToString() const {
     return StringPrintf("[ HenyeyGreensteinReflection g: %f]", g);
 }
 
@@ -736,7 +817,7 @@ Spectrum BSDF::rho(const Vector3f &wo, int nSamples, const Point2f *samples,
 
 Spectrum BSDF::Sample_f(const Vector3f &woWorld, Vector3f *wiWorld,
                         const Point2f &u, Float *pdf, BxDFType type,
-                        BxDFType *sampledType) const {
+                        BxDFType *sampledType) {
     ProfilePhase pp(Prof::BSDFSampling);
     // Choose which _BxDF_ to sample
     int matchingComps = NumComponents(type);
@@ -759,6 +840,16 @@ Spectrum BSDF::Sample_f(const Vector3f &woWorld, Vector3f *wiWorld,
     CHECK(bxdf != nullptr);
     VLOG(2) << "BSDF::Sample_f chose comp = " << comp << " / matching = " <<
         matchingComps << ", bxdf: " << bxdf->ToString();
+
+    // if 2d, project normals onto x-z plane and re-calculate local cardinal vectors
+    if (bxdf->is2d()) {
+          ns.y = 0;
+          ns = Normalize(ns);
+          ng.y = 0;
+          ng = Normalize(ng);
+          ts = Vector3f(0.0f, 1.f, 0.0f);
+          ss = Normalize(Cross(ns, ts));
+    }
 
     // Remap _BxDF_ sample _u_ to $[0,1)^2$
     Point2f uRemapped(std::min(u[0] * matchingComps - comp, OneMinusEpsilon),

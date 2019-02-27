@@ -35,28 +35,27 @@
 #pragma once
 #endif
 
-#ifndef PBRT_LIGHTS_POINT_H
-#define PBRT_LIGHTS_POINT_H
+#ifndef PBRT_LIGHTS_SPOT2D_H
+#define PBRT_LIGHTS_SPOT2D_H
 
-// lights/point.h*
+// lights/spot.h*
 #include "pbrt.h"
 #include "light.h"
 #include "shape.h"
 
 namespace pbrt {
 
-// PointLight Declarations
-class PointLight : public Light {
+// SpotLight2d Declarations
+class SpotLight2d : public Light {
   public:
-    // PointLight Public Methods
-    PointLight(const Transform &LightToWorld,
-               const MediumInterface &mediumInterface, const Spectrum &I)
-        : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface),
-          pLight(LightToWorld(Point3f(0, 0, 0))),
-          I(I) {}
-    PointLight(PointLight &light) : Light(light), pLight(light.pLight), I(light.I) {}
+    // SpotLight2d Public Methods
+    SpotLight2d(const Transform &l2w, const Point3f &from,
+              const Transform &LightToWorld, const MediumInterface &m,
+              const Spectrum &I, Float totalWidth, Float falloffStart);
+    SpotLight2d(SpotLight2d &light);
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
                        Float *pdf, VisibilityTester *vis) const;
+    Float Falloff(const Vector3f &w) const;
     Spectrum Power() const;
     Float Pdf_Li(const Interaction &, const Vector3f &) const;
     Spectrum Sample_Le(const Point2f &u1, const Point2f &u2, Float time,
@@ -64,23 +63,25 @@ class PointLight : public Light {
                        Float *pdfDir) const;
     void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
                 Float *pdfDir) const;
-    void AdjustDirection(Vector3f &dir) {
-        return;
-    }
-
+    void AdjustDirection(Vector3f &dir);
     std::shared_ptr<Light> Clone();
-    std::shared_ptr<PointLight> doClone();
+    std::shared_ptr<SpotLight2d> doClone();
 
   private:
-    // PointLight Private Data
+    // SpotLight2d Private Data
     const Point3f pLight;
     const Spectrum I;
+    const Float cosTotalWidth, cosFalloffStart;
+    Transform LToW;
+    Transform WToL;
+    const Transform l2w;
+    const Point3f from;
 };
 
-std::shared_ptr<PointLight> CreatePointLight(const Transform &light2world,
-                                             const Medium *medium,
-                                             const ParamSet &paramSet);
+std::shared_ptr<SpotLight2d> CreateSpotLight2d(const Transform &l2w,
+                                           const Medium *medium,
+                                           const ParamSet &paramSet);
 
 }  // namespace pbrt
 
-#endif  // PBRT_LIGHTS_POINT_H
+#endif  // PBRT_LIGHTS_SPOT_H

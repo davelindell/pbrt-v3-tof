@@ -35,52 +35,44 @@
 #pragma once
 #endif
 
-#ifndef PBRT_LIGHTS_POINT_H
-#define PBRT_LIGHTS_POINT_H
+#ifndef PBRT_CAMERAS_PERSPECTIVE2D_H
+#define PBRT_CAMERAS_PERSPECTIVE2D_H
 
-// lights/point.h*
+// cameras/perspective.h*
 #include "pbrt.h"
-#include "light.h"
-#include "shape.h"
+#include "camera.h"
+#include "film.h"
+#include "film2d.h"
 
 namespace pbrt {
 
-// PointLight Declarations
-class PointLight : public Light {
+// PerspectiveCamera2d Declarations
+class PerspectiveCamera2d : public ProjectiveCamera {
   public:
-    // PointLight Public Methods
-    PointLight(const Transform &LightToWorld,
-               const MediumInterface &mediumInterface, const Spectrum &I)
-        : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface),
-          pLight(LightToWorld(Point3f(0, 0, 0))),
-          I(I) {}
-    PointLight(PointLight &light) : Light(light), pLight(light.pLight), I(light.I) {}
-    Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
-                       Float *pdf, VisibilityTester *vis) const;
-    Spectrum Power() const;
-    Float Pdf_Li(const Interaction &, const Vector3f &) const;
-    Spectrum Sample_Le(const Point2f &u1, const Point2f &u2, Float time,
-                       Ray *ray, Normal3f *nLight, Float *pdfPos,
-                       Float *pdfDir) const;
-    void Pdf_Le(const Ray &, const Normal3f &, Float *pdfPos,
-                Float *pdfDir) const;
-    void AdjustDirection(Vector3f &dir) {
-        return;
-    }
-
-    std::shared_ptr<Light> Clone();
-    std::shared_ptr<PointLight> doClone();
+    // PerspectiveCamera2d Public Methods
+    PerspectiveCamera2d(const AnimatedTransform &CameraToWorld,
+                      const Bounds2f &screenWindow, Float shutterOpen,
+                      Float shutterClose, Float lensRadius, Float focalDistance,
+                      Float fov, Film2d *film, const Medium *medium);
+    Float GenerateRay(const CameraSample &sample, Ray *) const;
+    Float GenerateRayDifferential(const CameraSample &sample,
+                                  RayDifferential *ray) const;
+    Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
+    void Pdf_We(const Ray &ray, Float *pdfPos, Float *pdfDir) const;
+    Spectrum Sample_Wi(const Interaction &ref, const Point2f &sample,
+                       Vector3f *wi, Float *pdf, Point2f *pRaster,
+                       VisibilityTester *vis) const;
 
   private:
-    // PointLight Private Data
-    const Point3f pLight;
-    const Spectrum I;
+    // PerspectiveCamera2d Private Data
+    Vector3f dxCamera, dyCamera;
+    Float A;
 };
 
-std::shared_ptr<PointLight> CreatePointLight(const Transform &light2world,
-                                             const Medium *medium,
-                                             const ParamSet &paramSet);
+PerspectiveCamera2d *CreatePerspectiveCamera2d(const ParamSet &params,
+                                           const AnimatedTransform &cam2world,
+                                           Film *film, const Medium *medium);
 
 }  // namespace pbrt
 
-#endif  // PBRT_LIGHTS_POINT_H
+#endif  // PBRT_CAMERAS_PERSPECTIVE2d_H

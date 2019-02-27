@@ -46,6 +46,7 @@
 #include "cameras/environment.h"
 #include "cameras/orthographic.h"
 #include "cameras/perspective.h"
+#include "cameras/perspective2d.h"
 #include "cameras/realistic.h"
 #include "filters/box.h"
 #include "filters/gaussian.h"
@@ -67,12 +68,15 @@
 #include "lights/point.h"
 #include "lights/projection.h"
 #include "lights/spot.h"
+#include "lights/spot2d.h"
 #include "materials/disney.h"
+#include "materials/disney2d.h"
 #include "materials/fourier.h"
 #include "materials/glass.h"
 #include "materials/hair.h"
 #include "materials/kdsubsurface.h"
 #include "materials/matte.h"
+#include "materials/matte2d.h"
 #include "materials/metal.h"
 #include "materials/mirror.h"
 #include "materials/mixmat.h"
@@ -82,6 +86,9 @@
 #include "materials/translucent.h"
 #include "materials/uber.h"
 #include "materials/retroreflector.h"
+#include "materials/retroreflector2d.h"
+#include "materials/idealretroreflector.h"
+#include "materials/idealretroreflector2d.h"
 #include "samplers/halton.h"
 #include "samplers/maxmin.h"
 #include "samplers/random.h"
@@ -546,6 +553,8 @@ std::shared_ptr<Material> MakeMaterial(const std::string &name,
         return nullptr;
     else if (name == "matte")
         material = CreateMatteMaterial(mp);
+    else if (name == "matte2d")
+        material = CreateMatteMaterial2d(mp);
     else if (name == "plastic")
         material = CreatePlasticMaterial(mp);
     else if (name == "translucent")
@@ -558,6 +567,8 @@ std::shared_ptr<Material> MakeMaterial(const std::string &name,
         material = CreateHairMaterial(mp);
     else if (name == "disney")
         material = CreateDisneyMaterial(mp);
+    else if (name == "disney2d")
+        material = CreateDisneyMaterial2d(mp);
     else if (name == "mix") {
         std::string m1 = mp.FindString("namedmaterial1", "");
         std::string m2 = mp.FindString("namedmaterial2", "");
@@ -593,6 +604,12 @@ std::shared_ptr<Material> MakeMaterial(const std::string &name,
         material = CreateFourierMaterial(mp);
     else if (name == "retroreflector")
         material = CreateRetroreflectorMaterial(mp);
+    else if (name == "retroreflector2d")
+        material = CreateRetroreflectorMaterial2d(mp);
+    else if (name == "idealretroreflector")
+        material = CreateIdealRetroreflectorMaterial(mp);
+    else if (name == "idealretroreflector2d")
+        material = CreateIdealRetroreflectorMaterial2d(mp);
     else {
         Warning("Material \"%s\" unknown. Using \"matte\".", name.c_str());
         material = CreateMatteMaterial(mp);
@@ -743,6 +760,8 @@ std::shared_ptr<Light> MakeLight(const std::string &name,
             CreatePointLight(light2world, mediumInterface.outside, paramSet);
     else if (name == "spot")
         light = CreateSpotLight(light2world, mediumInterface.outside, paramSet);
+    else if (name == "spot2d")
+        light = CreateSpotLight2d(light2world, mediumInterface.outside, paramSet);
     else if (name == "goniometric")
         light = CreateGoniometricLight(light2world, mediumInterface.outside,
                                        paramSet);
@@ -804,6 +823,9 @@ Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
                                         cam2world[1], transformEnd);
     if (name == "perspective")
         camera = CreatePerspectiveCamera(paramSet, animatedCam2World, film,
+                                         mediumInterface.outside);
+    else if (name == "perspective2d")
+        camera = CreatePerspectiveCamera2d(paramSet, animatedCam2World, film,
                                          mediumInterface.outside);
     else if (name == "orthographic")
         camera = CreateOrthographicCamera(paramSet, animatedCam2World, film,

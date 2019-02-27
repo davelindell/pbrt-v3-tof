@@ -162,6 +162,11 @@ inline Vector3f CosineSampleHemisphere(const Point2f &u) {
     return Vector3f(d.x, d.y, z);
 }
 
+inline Vector3f CosineSampleArc(const Point2f &u) {
+    Float z = std::sqrt(std::max((Float)0, 1 - u.x * u.x));
+    return Vector3f(u.x, 0.f, z);
+}
+
 inline Float CosineHemispherePdf(Float cosTheta) { return cosTheta * InvPi; }
 
 inline Float BalanceHeuristic(int nf, Float fPdf, int ng, Float gPdf) {

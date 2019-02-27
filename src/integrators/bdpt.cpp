@@ -390,6 +390,8 @@ void BDPTIntegrator::Render(const Scene &scene) {
                 do {
                     // Generate a single sample using BDPT
                     Point2f pFilm = (Point2f)pPixel + tileSampler->Get2D();
+                    if (camera->film->is2d())
+                        pFilm.y = 0;
 
                     // Trace the camera subpath
                     Vertex *cameraVertices = arena.Alloc<Vertex>(maxDepth + 2);
@@ -570,7 +572,10 @@ Spectrum ConnectBDPT(
                 //if (L.c[0] > 80000)
                 //L = TOFSpectrum();
                 //else 
-                L = L.AddTimeOfFlight(distance);
+                if (t <= 2)
+                    L = L.AddTimeOfFlight(distance);
+                else
+                    L = TOFSpectrum();
             }
         }
     } else {
@@ -602,6 +607,7 @@ Spectrum ConnectBDPT(
     ReportValue(pathLength, s + t - 2);
 
     // Compute MIS weight for connection strategy
+    // TODO: Check this?
     Float misWeight =
         L.IsBlack() ? 0.f : MISWeight(scene, lightVertices, cameraVertices,
                                       sampled, s, t, lightDistr, lightToIndex);
