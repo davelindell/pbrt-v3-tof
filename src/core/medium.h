@@ -98,6 +98,23 @@ class HenyeyGreenstein : public PhaseFunction {
     const Float g;
 };
 
+// HenyeyGreenstein Declarations
+class HenyeyGreenstein2d : public PhaseFunction {
+  public:
+    // HenyeyGreenstein Public Methods
+    HenyeyGreenstein2d(Float g) : g(g) {}
+    Float p(const Vector3f &wo, const Vector3f &wi) const;
+    Float Sample_p(const Vector3f &wo, Vector3f *wi,
+                   const Point2f &sample) const;
+    std::string ToString() const {
+        return StringPrintf("[ HenyeyGreenstein2d g: %f ]", g);
+    }
+
+  private:
+    const Float g;
+};
+
+
 // MediumInterface Declarations
 struct MediumInterface {
     MediumInterface() : inside(nullptr), outside(nullptr) {}

@@ -70,6 +70,10 @@ bool Disk::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     if (phi < 0) phi += 2 * Pi;
     if (phi > phiMax) return false;
 
+    // if we hit the exact center of the disk, return false
+    // because the derivatives have a singularity here
+    if (dist2 == 0) return false;
+
     // Find parametric representation of disk hit
     Float u = phi / phiMax;
     Float rHit = std::sqrt(dist2);

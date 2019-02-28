@@ -87,11 +87,11 @@ inline Spectrum FrSchlick(const Spectrum &R0, Float cosTheta) {
 inline Float SchlickR0FromEta(Float eta) { return sqr(eta - 1) / sqr(eta + 1); }
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneyDiffuse2d2d
+// DisneyDiffuse2d
 
-class DisneyDiffuse2d2d : public BxDF2d {
+class DisneyDiffuse2d : public BxDF2d {
   public:
-    DisneyDiffuse2d2d(const Spectrum &R)
+    DisneyDiffuse2d(const Spectrum &R)
         : BxDF2d(BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE)), R(R) {}
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
     Spectrum rho(const Vector3f &, int, const Point2f *) const { return R; }
@@ -102,7 +102,7 @@ class DisneyDiffuse2d2d : public BxDF2d {
     Spectrum R;
 };
 
-Spectrum DisneyDiffuse2d2d::f(const Vector3f &wo, const Vector3f &wi) const {
+Spectrum DisneyDiffuse2d::f(const Vector3f &wo, const Vector3f &wi) const {
     Float Fo = SchlickWeight(AbsCosTheta(wo)),
           Fi = SchlickWeight(AbsCosTheta(wi));
 
@@ -111,8 +111,8 @@ Spectrum DisneyDiffuse2d2d::f(const Vector3f &wo, const Vector3f &wi) const {
     return R * InvPi * (1 - Fo / 2) * (1 - Fi / 2);
 }
 
-std::string DisneyDiffuse2d2d::ToString() const {
-    return StringPrintf("[ DisneyDiffuse2d2d R: %s ]", R.ToString().c_str());
+std::string DisneyDiffuse2d::ToString() const {
+    return StringPrintf("[ DisneyDiffuse2d R: %s ]", R.ToString().c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -293,6 +293,7 @@ Spectrum DisneyClearcoat2d::Sample_f(const Vector3f &wo, Vector3f *wi,
 
     *wi = Reflect(wo, wh);
     if (!SameHemisphere(wo, *wi)) return Spectrum(0.f);
+    wi->y = 0;
 
     *pdf = Pdf(wo, *wi);
     return f(wo, *wi);
@@ -504,9 +505,9 @@ void DisneyMaterial2d::ComputeScatteringFunctions(SurfaceInteraction *si,
     if (diffuseWeight > 0) {
         if (thin) {
             Float flat = flatness->Evaluate(*si);
-            // Blend between DisneyDiffuse2d2d and fake subsurface based on
+            // Blend between DisneyDiffuse2d and fake subsurface based on
             // flatness.  Additionally, weight using diffTrans.
-            si->bsdf->Add(ARENA_ALLOC(arena, DisneyDiffuse2d2d)(
+            si->bsdf->Add(ARENA_ALLOC(arena, DisneyDiffuse2d)(
                 diffuseWeight * (1 - flat) * (1 - dt) * c));
             si->bsdf->Add(ARENA_ALLOC(arena, DisneyFakeSS2d)(
                 diffuseWeight * flat * (1 - dt) * c, rough));
@@ -516,7 +517,7 @@ void DisneyMaterial2d::ComputeScatteringFunctions(SurfaceInteraction *si,
                 // No subsurface scattering; use regular (Fresnel modified)
                 // diffuse.
                 si->bsdf->Add(
-                    ARENA_ALLOC(arena, DisneyDiffuse2d2d)(diffuseWeight * c));
+                    ARENA_ALLOC(arena, DisneyDiffuse2d)(diffuseWeight * c));
             else {
                 // Use a BSSRDF instead.
                 si->bsdf->Add(ARENA_ALLOC(arena, SpecularTransmission)(

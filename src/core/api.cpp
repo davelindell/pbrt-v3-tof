@@ -721,7 +721,11 @@ std::shared_ptr<Medium> MakeMedium(const std::string &name,
     Medium *m = NULL;
     if (name == "homogeneous") {
         m = new HomogeneousMedium(sig_a, sig_s, g);
-    } else if (name == "heterogeneous") {
+    } 
+    else if (name == "homogeneous2d") {
+        m = new HomogeneousMedium2d(sig_a, sig_s, g);
+    } 
+    else if (name == "heterogeneous") {
         int nitems;
         const Float *data = paramSet.FindFloat("density", &nitems);
         if (!data) {
