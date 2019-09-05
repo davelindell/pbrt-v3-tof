@@ -45,6 +45,7 @@
 #include "accelerators/kdtreeaccel.h"
 #include "cameras/environment.h"
 #include "cameras/orthographic.h"
+#include "cameras/orthographic2d.h"
 #include "cameras/perspective.h"
 #include "cameras/perspective2d.h"
 #include "cameras/realistic.h"
@@ -833,6 +834,9 @@ Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
                                          mediumInterface.outside);
     else if (name == "orthographic")
         camera = CreateOrthographicCamera(paramSet, animatedCam2World, film,
+                                          mediumInterface.outside);
+    else if (name == "orthographic2d")
+        camera = CreateOrthographicCamera2d(paramSet, animatedCam2World, film,
                                           mediumInterface.outside);
     else if (name == "realistic")
         camera = CreateRealisticCamera(paramSet, animatedCam2World, film,
