@@ -36,6 +36,7 @@
 #include "ext/targa.h"
 #include "fileutil.h"
 #include "spectrum.h"
+#include "hdf5.h"
 
 #include <ImfRgba.h>
 #include <ImfRgbaFile.h>
@@ -43,6 +44,8 @@
 namespace pbrt {
 
 // ImageIO Local Declarations
+static void WriteImageHDF5(const std::string &name, const Float *pixels,
+                          int xRes, int yRes, int bins);
 static void WriteImageEXR(const std::string &name, const Float *pixels,
                           int xRes, int yRes, int totalXRes, int totalYRes,
                           int xOffset, int yOffset);
@@ -79,12 +82,14 @@ std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
 }
 
 void WriteImage(const std::string &name, const Float *rgb,
-                const Bounds2i &outputBounds, const Point2i &totalResolution) {
+                const Bounds2i &outputBounds, const Point2i &totalResolution, const int nTimeBins) {
     Vector2i resolution = outputBounds.Diagonal();
     if (HasExtension(name, ".exr")) {
         WriteImageEXR(name, rgb, resolution.x, resolution.y, totalResolution.x,
                       totalResolution.y, outputBounds.pMin.x,
                       outputBounds.pMin.y);
+    } else if (HasExtension(name, ".h5")) {
+        WriteImageHDF5(name, rgb, resolution.x, resolution.y, nTimeBins);
     } else if (HasExtension(name, ".pfm")) {
         WriteImagePFM(name, rgb, resolution.x, resolution.y);
     } else if (HasExtension(name, ".tga") || HasExtension(name, ".png")) {
@@ -160,6 +165,22 @@ RGBSpectrum *ReadImageEXR(const std::string &name, int *width, int *height,
 
     return NULL;
 }
+
+
+static void WriteImageHDF5(const std::string &name, const Float *pixels,
+                          int xRes, int yRes, int bins) {
+    hsize_t dimsf[4] = {bins, yRes, xRes, 3};
+    hid_t file = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dataspace = H5Screate_simple(4, dimsf, NULL); 
+    hid_t dataset = H5Dcreate(file, "data", H5T_IEEE_F32BE, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    herr_t status = H5Dwrite(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, pixels);
+
+    H5Sclose(dataspace);
+    H5Dclose(dataset);
+    H5Fclose(file);
+    return;
+}
+
 
 static void WriteImageEXR(const std::string &name, const Float *pixels,
                           int xRes, int yRes, int totalXRes, int totalYRes,

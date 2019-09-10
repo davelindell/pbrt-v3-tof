@@ -84,11 +84,11 @@ int GenerateCameraSubpath(
     ray.ScaleDifferentials(1 / std::sqrt(sampler.samplesPerPixel));
 
     // adjust spotlight to point along the camera ray direction
-    for (size_t i = 0; i < scene.lights.size(); ++i)
-        if (lights == nullptr)
-            scene.lights[i].get()->AdjustDirection(ray.d);
-        else
-            (*lights)[i].get()->AdjustDirection(ray.d);
+    //for (size_t i = 0; i < scene.lights.size(); ++i)
+    //    if (lights == nullptr)
+    //        scene.lights[i].get()->AdjustDirection(ray.d);
+    //    else
+    //        (*lights)[i].get()->AdjustDirection(ray.d);
 
     // Generate first vertex on camera subpath and start random walk
     Float pdfPos, pdfDir;
@@ -572,10 +572,12 @@ Spectrum ConnectBDPT(
                 //if (L.c[0] > 80000)
                 //L = TOFSpectrum();
                 //else 
-                if (t <= 2)
-                    L = L.AddTimeOfFlight(distance);
-                else
-                    L = TOFSpectrum();
+                //
+                L = L.AddTimeOfFlight(distance);
+                //if (t <= 2)
+                //    L = L.AddTimeOfFlight(distance);
+                //else
+                //    L = TOFSpectrum();
             }
         }
     } else {

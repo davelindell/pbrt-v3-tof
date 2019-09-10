@@ -198,54 +198,110 @@ void Film::AddSplat(const Point2f &p, Spectrum v) {
 
 }
 
+//void Film::WriteImage(Float splatScale) {
+//    // Convert image to RGB and compute final pixel values
+//    LOG(INFO) <<
+//        "Converting image to RGB and computing final weighted pixel values";
+//    for (int k = 0; k < nTimeBins; k++) {
+//        std::unique_ptr<Float[]> rgb(new Float[3 * croppedPixelBounds.Area()]);
+//        int offset = 0;
+//        for (Point2i p : croppedPixelBounds) {
+//            // Convert pixel XYZ color to RGB
+//            Pixel &pixel = GetPixel(p);
+//            Float xyz[3];
+//            pixel.L.ToXYZ(xyz, k);
+//            XYZToRGB(xyz, &rgb[3 * offset]);
+//
+//            // Normalize pixel with weight sum
+//            Float filterWeightSum = pixel.filterWeightSum;
+//            if (filterWeightSum != 0) {
+//                Float invWt = (Float)1 / filterWeightSum;
+//                rgb[3 * offset] = std::max((Float)0, rgb[3 * offset] * invWt);
+//                rgb[3 * offset + 1] =
+//                    std::max((Float)0, rgb[3 * offset + 1] * invWt);
+//                rgb[3 * offset + 2] =
+//                    std::max((Float)0, rgb[3 * offset + 2] * invWt);
+//            }
+//
+//            // Add splat value at pixel
+//            Float splatRGB[3];
+//            Float splatXYZ[3] = {pixel.splatXYZ[k*3+0], pixel.splatXYZ[k*3+1],
+//                                 pixel.splatXYZ[k*3+2]};
+//            XYZToRGB(splatXYZ, splatRGB);
+//            rgb[3 * offset] += splatScale * splatRGB[0];
+//            rgb[3 * offset + 1] += splatScale * splatRGB[1];
+//            rgb[3 * offset + 2] += splatScale * splatRGB[2];
+//
+//            // Scale pixel value by _scale_
+//            rgb[3 * offset] *= scale;
+//            rgb[3 * offset + 1] *= scale;
+//            rgb[3 * offset + 2] *= scale;
+//            ++offset;
+//        }
+//
+//        // Write RGB image
+//        LOG(INFO) << "Writing image " << filename << " with bounds " <<
+//            croppedPixelBounds;
+//        char buffer[256];
+//        sprintf(buffer,"%04d_%s",k,filename.c_str());
+//        pbrt::WriteImage(buffer, &rgb[0], croppedPixelBounds, fullResolution);
+//    }
+//}
+
 void Film::WriteImage(Float splatScale) {
     // Convert image to RGB and compute final pixel values
     LOG(INFO) <<
         "Converting image to RGB and computing final weighted pixel values";
+    int global_offset = 0;
+    std::unique_ptr<Float[]> rgb_all(new Float[3 * croppedPixelBounds.Area() * nTimeBins]);
+
     for (int k = 0; k < nTimeBins; k++) {
-    std::unique_ptr<Float[]> rgb(new Float[3 * croppedPixelBounds.Area()]);
-    int offset = 0;
-    for (Point2i p : croppedPixelBounds) {
-        // Convert pixel XYZ color to RGB
-        Pixel &pixel = GetPixel(p);
-        Float xyz[3];
-        pixel.L.ToXYZ(xyz, k);
-        XYZToRGB(xyz, &rgb[3 * offset]);
+        std::unique_ptr<Float[]> rgb(new Float[3 * croppedPixelBounds.Area()]);
+        int offset = 0;
+        for (Point2i p : croppedPixelBounds) {
+            // Convert pixel XYZ color to RGB
+            Pixel &pixel = GetPixel(p);
+            Float xyz[3];
+            pixel.L.ToXYZ(xyz, k);
+            XYZToRGB(xyz, &rgb[3 * offset]);
 
-        // Normalize pixel with weight sum
-        Float filterWeightSum = pixel.filterWeightSum;
-        if (filterWeightSum != 0) {
-            Float invWt = (Float)1 / filterWeightSum;
-            rgb[3 * offset] = std::max((Float)0, rgb[3 * offset] * invWt);
-            rgb[3 * offset + 1] =
-                std::max((Float)0, rgb[3 * offset + 1] * invWt);
-            rgb[3 * offset + 2] =
-                std::max((Float)0, rgb[3 * offset + 2] * invWt);
+            // Normalize pixel with weight sum
+            Float filterWeightSum = pixel.filterWeightSum;
+            if (filterWeightSum != 0) {
+                Float invWt = (Float)1 / filterWeightSum;
+                rgb[3 * offset] = std::max((Float)0, rgb[3 * offset] * invWt);
+                rgb[3 * offset + 1] =
+                    std::max((Float)0, rgb[3 * offset + 1] * invWt);
+                rgb[3 * offset + 2] =
+                    std::max((Float)0, rgb[3 * offset + 2] * invWt);
+            }
+
+            // Add splat value at pixel
+            Float splatRGB[3];
+            Float splatXYZ[3] = {pixel.splatXYZ[k*3+0], pixel.splatXYZ[k*3+1],
+                                 pixel.splatXYZ[k*3+2]};
+            XYZToRGB(splatXYZ, splatRGB);
+            rgb[3 * offset] += splatScale * splatRGB[0];
+            rgb[3 * offset + 1] += splatScale * splatRGB[1];
+            rgb[3 * offset + 2] += splatScale * splatRGB[2];
+
+            // Scale pixel value by _scale_
+            rgb[3 * offset] *= scale;
+            rgb[3 * offset + 1] *= scale;
+            rgb[3 * offset + 2] *= scale;
+            ++offset;
         }
-
-        // Add splat value at pixel
-        Float splatRGB[3];
-        Float splatXYZ[3] = {pixel.splatXYZ[k*3+0], pixel.splatXYZ[k*3+1],
-                             pixel.splatXYZ[k*3+2]};
-        XYZToRGB(splatXYZ, splatRGB);
-        rgb[3 * offset] += splatScale * splatRGB[0];
-        rgb[3 * offset + 1] += splatScale * splatRGB[1];
-        rgb[3 * offset + 2] += splatScale * splatRGB[2];
-
-        // Scale pixel value by _scale_
-        rgb[3 * offset] *= scale;
-        rgb[3 * offset + 1] *= scale;
-        rgb[3 * offset + 2] *= scale;
-        ++offset;
+        memcpy(&rgb_all[0] + global_offset, &rgb[0],
+                     3 * croppedPixelBounds.Area() * sizeof(Float)); 
+        global_offset += 3 * croppedPixelBounds.Area();
     }
-
     // Write RGB image
     LOG(INFO) << "Writing image " << filename << " with bounds " <<
         croppedPixelBounds;
     char buffer[256];
-    sprintf(buffer,"%04d_%s",k,filename.c_str());
-    pbrt::WriteImage(buffer, &rgb[0], croppedPixelBounds, fullResolution);
-    }
+    sprintf(buffer, "%s", filename.c_str());
+    pbrt::WriteImage(buffer, &rgb_all[0], croppedPixelBounds, fullResolution, nTimeBins);
+
 }
 
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
