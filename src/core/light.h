@@ -64,7 +64,7 @@ class Light {
     // Light Interface
     virtual ~Light();
     Light(int flags, const Transform &LightToWorld,
-          const MediumInterface &mediumInterface, int nSamples = 1);
+          const MediumInterface &mediumInterface, int nSamples = 1, int confocal = 1);
     Light(Light &light);
     virtual Spectrum Sample_Li(const Interaction &ref, const Point2f &u,
                                Vector3f *wi, Float *pdf,
@@ -85,6 +85,7 @@ class Light {
     const int flags;
     const int nSamples;
     const MediumInterface mediumInterface;
+    const int confocal;
 
   protected:
     // Light Protected Data

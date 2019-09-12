@@ -84,11 +84,13 @@ int GenerateCameraSubpath(
     ray.ScaleDifferentials(1 / std::sqrt(sampler.samplesPerPixel));
 
     // adjust spotlight to point along the camera ray direction
-    //for (size_t i = 0; i < scene.lights.size(); ++i)
-    //    if (lights == nullptr)
-    //        scene.lights[i].get()->AdjustDirection(ray.d);
-    //    else
-    //        (*lights)[i].get()->AdjustDirection(ray.d);
+    for (size_t i = 0; i < scene.lights.size(); ++i)
+        if (lights == nullptr && scene.lights[i].get()->confocal) { 
+            scene.lights[i].get()->AdjustDirection(ray.d);
+        }
+        else if ((*lights)[i].get()->confocal) { 
+            (*lights)[i].get()->AdjustDirection(ray.d);
+        }
 
     // Generate first vertex on camera subpath and start random walk
     Float pdfPos, pdfDir;

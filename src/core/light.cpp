@@ -45,12 +45,13 @@ STAT_COUNTER("Scene/AreaLights", numAreaLights);
 
 // Light Method Definitions
 Light::Light(int flags, const Transform &LightToWorld,
-             const MediumInterface &mediumInterface, int nSamples)
+             const MediumInterface &mediumInterface, int nSamples, int confocal)
     : flags(flags),
       nSamples(std::max(1, nSamples)),
       mediumInterface(mediumInterface),
       LightToWorld(LightToWorld),
-      WorldToLight(Inverse(LightToWorld)) {
+      WorldToLight(Inverse(LightToWorld)),
+      confocal(confocal) {
     ++numLights;
 }
 
@@ -59,7 +60,8 @@ Light::Light(Light &light)
       nSamples(std::max(1, light.nSamples)),
       mediumInterface(light.mediumInterface),
       LightToWorld(light.LightToWorld),
-      WorldToLight(Inverse(light.LightToWorld)) {
+      WorldToLight(Inverse(light.LightToWorld)),
+      confocal(light.confocal) {
 }
 
 Light::~Light() {}

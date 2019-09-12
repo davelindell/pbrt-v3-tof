@@ -764,7 +764,7 @@ std::shared_ptr<Light> MakeLight(const std::string &name,
         light =
             CreatePointLight(light2world, mediumInterface.outside, paramSet);
     else if (name == "spot")
-        light = CreateSpotLight(light2world, mediumInterface.outside, paramSet);
+        light = CreateSpotLight(light2world, mediumInterface.outside, paramSet); 
     else if (name == "spot2d")
         light = CreateSpotLight2d(light2world, mediumInterface.outside, paramSet);
     else if (name == "goniometric")

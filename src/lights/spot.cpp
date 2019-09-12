@@ -45,8 +45,8 @@ SpotLight::SpotLight(const Transform &l2w,
                      const Point3f &from, 
                      const Transform &LightToWorld,
                      const MediumInterface &mediumInterface, const Spectrum &I,
-                     Float totalWidth, Float falloffStart)
-    : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface),
+                     Float totalWidth, Float falloffStart, int confocal)
+    : Light((int)LightFlags::DeltaPosition, LightToWorld, mediumInterface, 1, confocal),
       l2w(l2w),
       LToW(LightToWorld),
       WToL(Inverse(LightToWorld)),
@@ -145,6 +145,7 @@ std::shared_ptr<SpotLight> CreateSpotLight(const Transform &l2w,
     Spectrum sc = paramSet.FindOneSpectrum("scale", Spectrum(1.0));
     Float coneangle = paramSet.FindOneFloat("coneangle", 30.);
     Float conedelta = paramSet.FindOneFloat("conedeltaangle", 5.);
+    int confocal = paramSet.FindOneInt("confocal", 0);
     // Compute spotlight world to light transformation
     Point3f from = paramSet.FindOnePoint3f("from", Point3f(0, 0, 0));
     Point3f to = paramSet.FindOnePoint3f("to", Point3f(0, 0, 1));
@@ -154,10 +155,11 @@ std::shared_ptr<SpotLight> CreateSpotLight(const Transform &l2w,
     Transform dirToZ =
         Transform(Matrix4x4(du.x, du.y, du.z, 0., dv.x, dv.y, dv.z, 0., dir.x,
                             dir.y, dir.z, 0., 0, 0, 0, 1.));
+
     Transform light2world =
         l2w * Translate(Vector3f(from.x, from.y, from.z)) * Inverse(dirToZ);
     return std::make_shared<SpotLight>(l2w, from, light2world, medium, I * sc, coneangle,
-                                       coneangle - conedelta);
+                                       coneangle - conedelta, confocal);
 }
 
 }  // namespace pbrt
