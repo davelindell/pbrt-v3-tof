@@ -333,7 +333,7 @@ void BDPTIntegrator::Render(const Scene &scene) {
     Film *film = camera->film;
     const Bounds2i sampleBounds = film->GetSampleBounds();
     const Vector2i sampleExtent = sampleBounds.Diagonal();
-    const int tileSize = 16;
+    const int tileSize = 8;
     const int nXTiles = (sampleExtent.x + tileSize - 1) / tileSize;
     const int nYTiles = (sampleExtent.y + tileSize - 1) / tileSize;
     ProgressReporter reporter(nXTiles * nYTiles, "Rendering");
@@ -575,11 +575,11 @@ Spectrum ConnectBDPT(
                 //L = TOFSpectrum();
                 //else 
                 //
-                L = L.AddTimeOfFlight(distance);
-                //if (t <= 2)
-                //    L = L.AddTimeOfFlight(distance);
-                //else
-                //    L = TOFSpectrum();
+                //L = L.AddTimeOfFlight(distance);
+                if (t <= 2)
+                    L = L.AddTimeOfFlight(distance);
+                else
+                    L = TOFSpectrum();
             }
         }
     } else {
