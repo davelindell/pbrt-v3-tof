@@ -169,15 +169,33 @@ RGBSpectrum *ReadImageEXR(const std::string &name, int *width, int *height,
 
 static void WriteImageHDF5(const std::string &name, const Float *pixels,
                           int xRes, int yRes, int bins) {
-    hsize_t dimsf[4] = {bins, yRes, xRes, 3};
-    hid_t file = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    hid_t dataspace = H5Screate_simple(4, dimsf, NULL); 
-    hid_t dataset = H5Dcreate(file, "data", H5T_IEEE_F32BE, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    herr_t status = H5Dwrite(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, pixels);
 
-    H5Sclose(dataspace);
-    H5Dclose(dataset);
-    H5Fclose(file);
+    LOG(INFO) << StringPrintf("HDF5 image output size: %d, %d, %d", xRes, yRes, bins);
+    
+    if (bins > 0)
+    {
+        LOG(INFO) << "Writing 4D HDF5 file";
+        hsize_t dimsf[4] = {bins, yRes, xRes, 3};
+        hid_t file = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        hid_t dataspace = H5Screate_simple(4, dimsf, NULL); 
+        hid_t dataset = H5Dcreate(file, "data", H5T_IEEE_F32BE, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        herr_t status = H5Dwrite(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, pixels);
+        H5Sclose(dataspace);
+        H5Dclose(dataset);
+        H5Fclose(file);
+    }
+    else {
+        LOG(INFO) << "Writing 3D HDF5 file";
+        hsize_t dimsf[4] = {yRes, xRes, 3};
+        hid_t file = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        hid_t dataspace = H5Screate_simple(3, dimsf, NULL); 
+        hid_t dataset = H5Dcreate(file, "data", H5T_IEEE_F32BE, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        herr_t status = H5Dwrite(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, pixels);
+        H5Sclose(dataspace);
+        H5Dclose(dataset);
+        H5Fclose(file);
+    }
+
     return;
 }
 

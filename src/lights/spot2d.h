@@ -51,7 +51,7 @@ class SpotLight2d : public Light {
     // SpotLight2d Public Methods
     SpotLight2d(const Transform &l2w, const Point3f &from,
               const Transform &LightToWorld, const MediumInterface &m,
-              const Spectrum &I, Float totalWidth, Float falloffStart);
+              const Spectrum &I, Float totalWidth, Float falloffStart, int confocal);
     SpotLight2d(SpotLight2d &light);
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
                        Float *pdf, VisibilityTester *vis) const;
